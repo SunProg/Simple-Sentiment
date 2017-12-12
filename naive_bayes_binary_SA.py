@@ -5,36 +5,43 @@ import pandas as pd
 import random
 from nltk.corpus import movie_reviews
 
-class NaiveBayesClassifier:
+class NaiveBayesClassifierBinary:
 
     def __init__(self):
-        self.word_probs = []
         self.log_prior = {}
         self.pos_words = {}
         self.neg_words = {}
         self.log_likelihood_pos = {}
         self.log_likelihood_neg = {}
+
         
+
     def calculate_frequency(self, training_data):
         # 각 Class 빈도 계산
         num_pos = 0
         num_neg = 0
-        exceptions = [',', '.', 't']        
+        exceptions = [',', '.', 't']
         for docu in training_data:
+            docu_word_pos = {}
+            docu_word_neg = {}
             if docu[1] == 'pos':
                 num_pos += 1
                 for word in docu[0]:
 #                     if len(word) == 1 and word not in exceptions:
 #                         continue
                     if word in self.pos_words:
-                        self.pos_words[word] += 1
+                        if word not in docu_word_pos:
+                            self.pos_words[word] += 1
+                            docu_word_pos[word] = 1
                     else:
                         self.pos_words[word] = 1
             else:
                 num_neg += 1
                 for word in docu[0]:
                     if word in self.neg_words:
-                        self.neg_words[word] += 1
+                        if word not in docu_word_neg:
+                            self.neg_words[word] += 1
+                            docu_word_neg[word] = 1
                     else:
                         self.neg_words[word] = 1
         
@@ -44,20 +51,22 @@ class NaiveBayesClassifier:
         count_all_pos = 0
         count_all_neg = 0
         for word in self.pos_words:
-            count_all_pos = count_all_pos + self.pos_words[word] + 1
+            count_all_pos = count_all_pos + 1
         
         for word in self.neg_words:
-            count_all_neg = count_all_neg + self.neg_words[word] + 1
+            count_all_neg = count_all_neg + 1
             
         for word in self.pos_words:
-            self.log_likelihood_pos[word] = math.log2((self.pos_words[word] + 1)  
+            self.log_likelihood_pos[word] = math.log2((self.pos_words[word])  
                                                 / count_all_pos)
         
         for word in self.neg_words:
-            self.log_likelihood_neg[word] = math.log2((self.neg_words[word] + 1) 
+            self.log_likelihood_neg[word] = math.log2((self.neg_words[word]) 
                                                 / count_all_neg)
+        
         self.smoothing_pos = math.log2(1 / count_all_pos)
         self.smoothing_neg = math.log2(1 / count_all_neg)
+
         
         
     def train(self, training_data):
@@ -75,7 +84,7 @@ class NaiveBayesClassifier:
         sum_neg = self.log_prior['neg']
         word_in_docu_pos = {}
         word_in_docu_neg = {}
-        
+
         for word in test_data[0]:
             if word in self.log_likelihood_pos:
                 if word in word_in_docu_pos:
@@ -102,7 +111,7 @@ class NaiveBayesClassifier:
             return 'pos'
         else:
             return 'neg'
-    
+
     def accuracy(self, test_data):
         data_size = len(test_data)
         correct_num = 0
@@ -111,6 +120,7 @@ class NaiveBayesClassifier:
                 correct_num += 1
                 
         return float(correct_num / data_size)
+                
                 
     
                 
@@ -161,7 +171,7 @@ def main():
         training_data = training_test[0]
         test_data = training_test[1]
         
-        naive_bayes = NaiveBayesClassifier()
+        naive_bayes = NaiveBayesClassifierBinary()
         naive_bayes.train(training_data)
         
         accuracy = naive_bayes.accuracy(test_data)

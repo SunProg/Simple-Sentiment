@@ -5,7 +5,7 @@ import pandas as pd
 import random
 from nltk.corpus import movie_reviews
 
-class NaiveBayesClassifier:
+class NaiveBayesClassifierNegationBinary:
 
     def __init__(self):
         self.word_probs = []
@@ -14,33 +14,57 @@ class NaiveBayesClassifier:
         self.neg_words = {}
         self.log_likelihood_pos = {}
         self.log_likelihood_neg = {}
-        
+    
+    def word_count(self, word, pos_neg):
+        if pos_neg:
+            if word in self.pos_words:
+                self.pos_words[word] += 1
+            else:
+                self.pos_words[word] = 1
+        else:
+            if word in self.neg_words:
+                self.neg_words[word] += 1
+            else:
+                self.neg_words[word] = 1
+    
     def calculate_frequency(self, training_data):
         # 각 Class 빈도 계산
         num_pos = 0
         num_neg = 0
-        exceptions = [',', '.', 't']        
+        
+        exceptions = [',', '.', 't']
         for docu in training_data:
+            docu_word = [{}, {}]
+            negation = False # Negation Check
+            pos_neg = (docu[1] == 'pos')
+            #positive <- True / negative <- False    
             if docu[1] == 'pos':
                 num_pos += 1
-                for word in docu[0]:
-#                     if len(word) == 1 and word not in exceptions:
-#                         continue
-                    if word in self.pos_words:
-                        self.pos_words[word] += 1
-                    else:
-                        self.pos_words[word] = 1
             else:
                 num_neg += 1
-                for word in docu[0]:
-                    if word in self.neg_words:
-                        self.neg_words[word] += 1
-                    else:
-                        self.neg_words[word] = 1
+            
+            for word in docu[0]:
+#                 if len(word) == 1 and word not in exceptions:
+#                     continue
+                
+                if word == ',' or word == '.':
+                    negation = False
+                    continue
+                if word == 'not' or word == 'no' or word == 't':
+                    negation = True
+                    continue
+                
+                if negation: # Negation 시 not_word
+                    word = 'not_'+ word 
+                if word not in docu_word[pos_neg]:
+                    self.word_count(word, pos_neg)
+                    docu_word[pos_neg][word] = 1
+            
         
         return (num_pos, num_neg)
                     
     def log_likelihood(self):
+        # Log-likelihood 계산
         count_all_pos = 0
         count_all_neg = 0
         for word in self.pos_words:
@@ -61,9 +85,12 @@ class NaiveBayesClassifier:
         
         
     def train(self, training_data):
+        # Triaing 과정
         num_doc = len(training_data)
         print('num doc : %d' %(num_doc))
+        # pos/neg 단어 빈도수 계산
         num_pos, num_neg = self.calculate_frequency(training_data)
+        
         
         self.log_prior['pos'] = math.log2(num_pos / num_doc)
         self.log_prior['neg'] = math.log2(num_neg / num_doc)
@@ -75,8 +102,15 @@ class NaiveBayesClassifier:
         sum_neg = self.log_prior['neg']
         word_in_docu_pos = {}
         word_in_docu_neg = {}
-        
+        negation = False
+        # Bag-of-words로 구현
         for word in test_data[0]:
+            if word == 'not' or word == 'no' or word == 't':
+                negation = True
+                continue
+            
+            if negation:
+                word = 'not_'
             if word in self.log_likelihood_pos:
                 if word in word_in_docu_pos:
                     continue
@@ -102,7 +136,10 @@ class NaiveBayesClassifier:
             return 'pos'
         else:
             return 'neg'
+
+        
     
+    # Accuracy 계산
     def accuracy(self, test_data):
         data_size = len(test_data)
         correct_num = 0
@@ -111,6 +148,9 @@ class NaiveBayesClassifier:
                 correct_num += 1
                 
         return float(correct_num / data_size)
+                
+ 
+                
                 
     
                 
@@ -161,7 +201,7 @@ def main():
         training_data = training_test[0]
         test_data = training_test[1]
         
-        naive_bayes = NaiveBayesClassifier()
+        naive_bayes = NaiveBayesClassifierNegationBinary()
         naive_bayes.train(training_data)
         
         accuracy = naive_bayes.accuracy(test_data)
